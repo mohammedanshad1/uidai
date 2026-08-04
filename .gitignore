@@ -1,0 +1,4 @@
+# Ignore AI model files
+reference code/models/*.pth
+reference code/models/*.pt
+reference code/models/*.tflite

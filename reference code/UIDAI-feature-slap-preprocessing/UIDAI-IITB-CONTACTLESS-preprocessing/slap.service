@@ -1,0 +1,16 @@
+[Unit]
+Description=Slap multi-finger fingerprint pipeline
+After=network.target
+
+[Service]
+Type=simple
+User=tech
+WorkingDirectory=/home/tech/slap_backend
+Environment=SLAP_MODELS_DIR=/home/tech/slap_backend/models
+Environment=PORT=5010
+ExecStart=/home/tech/slap_backend/venv/bin/gunicorn -w 1 --threads 8 -t 0 -b 0.0.0.0:5010 wsgi:app
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

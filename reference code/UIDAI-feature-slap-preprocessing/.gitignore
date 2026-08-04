@@ -1,0 +1,29 @@
+# Large models / binaries
+**/*.pt
+**/*.pth
+**/*.h5
+**/*.tflite
+**/*.task
+**/*.apk
+**/*.tar.gz
+**/*.db
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/venv/
+
+# Flutter
+**/.dart_tool/
+**/build/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/android/.gradle/
+**/android/local.properties
+**/pubspec.lock
+
+# IDE
+**/.idea/
+**/.vscode/
+**/*.iml
+**/.DS_Store

@@ -1,0 +1,14 @@
+# Server deps for the GPU VM. torch/torchvision are installed SEPARATELY with the
+# CUDA (cu121) wheel in setup_on_vm.sh. tensorflow-cpu keeps TF off the GPU so the
+# whole Tesla P4 is available to PyTorch (MinutiaeNet + liveness).
+flask==3.1.3
+flask-cors==6.0.2
+gunicorn==23.0.0
+numpy==1.26.4
+opencv-python-headless==4.9.0.80
+pillow>=10.0.0
+scipy>=1.11.0
+scikit-image>=0.21.0
+tensorflow-cpu==2.16.2
+h5py>=3.10.0
+ultralytics>=8.0.0
