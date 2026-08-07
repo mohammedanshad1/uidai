@@ -1,6 +1,7 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import '../pipeline/pipeline_controller.dart';
+import '../services/capture_pipeline_service.dart';
 import 'dart:typed_data';
 import 'package:image/image.dart' as img;
 
@@ -16,6 +17,7 @@ class CaptureScreen extends StatefulWidget {
 class _CaptureScreenState extends State<CaptureScreen> {
   late CameraController _cameraController;
   final PipelineController _pipelineController = PipelineController();
+  final CapturePipelineService _capturePipelineService = CapturePipelineService();
   
   String _guidanceText = "Initializing...";
   PipelineState _state = PipelineState.initializing;
@@ -67,10 +69,25 @@ class _CaptureScreenState extends State<CaptureScreen> {
   }
   
   Future<void> _uploadToCloud(img.Image image) async {
-    // Phase 5: Wire up mock upload
+    setState(() => _guidanceText = "Evaluating capture quality...");
+
+    final quality = _capturePipelineService.evaluateQuality(image);
+    if (!quality.shouldContinue) {
+      setState(() => _guidanceText = quality.reason);
+      return;
+    }
+
+    setState(() => _guidanceText = "Compressing for secure upload...");
+    final payload = await _capturePipelineService.compressForCloud(image);
+
     setState(() => _guidanceText = "Uploading to secure cloud...");
-    await Future.delayed(const Duration(seconds: 1));
-    setState(() => _guidanceText = "Authentication Successful!");
+    final response = await _capturePipelineService.submitToCloud(payload);
+
+    if (response['status'] == 'accepted') {
+      setState(() => _guidanceText = 'Authentication successful. Template ready.');
+    } else {
+      setState(() => _guidanceText = 'Cloud matching failed. Retrying later.');
+    }
   }
 
   @override

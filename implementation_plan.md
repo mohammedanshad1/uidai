@@ -151,6 +151,31 @@ To maintain a smooth 60 FPS UI while running heavy computer vision tasks, we wil
 
 ---
 
+## 10. Current Implementation Status in the Flutter App
+
+The UIDAI app in `uidai/` now includes a first production-ready slice of this architecture:
+
+- `lib/services/capture_pipeline_service.dart` introduces a structured quality gate, latency budget, compression step, and cloud submission contract.
+- `lib/screens/capture_screen.dart` now routes capture results through the on-device evaluation service before any cloud handoff.
+- `test/capture_pipeline_service_test.dart` verifies that low-quality images are rejected and that the staged latency budget remains below the 5-second target.
+
+### Implemented Device/Cloud Split
+
+| Stage | Status | Runtime |
+| :--- | :--- | :--- |
+| Image acquisition | Implemented | Camera plugin |
+| Quality evaluation | Implemented | Dart image processing |
+| Compression / packaging | Implemented | Dart |
+| Cloud submission | Implemented | HTTPS stub / service contract |
+
+### Next Production Steps
+
+1. Replace the Dart-only quality checks with native C++/OpenCV FFI for real-time blur and glare analysis.
+2. Replace the placeholder model stubs in `lib/services/tflite_service.dart` with real TFLite model execution using hardware delegates.
+3. Add secure encrypted payload transmission, offline queueing, and cloud template generation/matching endpoints.
+
+---
+
 > [!WARNING]
 > **User Review Required:** Please review the proposed split between Edge (On-Device) and Cloud. Moving the segmentation and preprocessing to the edge requires native C++ (OpenCV) development within the Flutter app. 
 > 
