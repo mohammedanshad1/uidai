@@ -170,13 +170,9 @@ The UIDAI app in `uidai/` now includes a first production-ready slice of this ar
 
 ### Next Production Steps
 
-1. Replace the Dart-only quality checks with native C++/OpenCV FFI for real-time blur and glare analysis.
-2. Replace the placeholder model stubs in `lib/services/tflite_service.dart` with real TFLite model execution using hardware delegates.
-3. Add secure encrypted payload transmission, offline queueing, and cloud template generation/matching endpoints.
+1. Migrate the current Dart-based image quality evaluation to native OpenCV using Flutter FFI for improved performance.
 
+2. Extend the existing TensorFlow Lite integration with production-trained biometric models and hardware acceleration (NNAPI on Android / CoreML on iOS).
+
+3. Implement encrypted payload transmission, offline synchronization, certificate pinning, and production cloud APIs for biometric template generation and matching.
 ---
-
-> [!WARNING]
-> **User Review Required:** Please review the proposed split between Edge (On-Device) and Cloud. Moving the segmentation and preprocessing to the edge requires native C++ (OpenCV) development within the Flutter app. 
-> 
-> **Are you comfortable with adding native C++ code (via FFI) and TFLite dependencies to the Flutter project, or would you prefer a pure-Dart approach (which may be slower)?** Please provide approval to proceed with Phase 1.
