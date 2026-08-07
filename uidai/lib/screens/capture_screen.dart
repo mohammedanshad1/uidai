@@ -2,6 +2,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import '../pipeline/pipeline_controller.dart';
 import '../services/capture_pipeline_service.dart';
+import 'auth_success_screen.dart';
 import 'dart:typed_data';
 import 'package:image/image.dart' as img;
 
@@ -84,7 +85,13 @@ class _CaptureScreenState extends State<CaptureScreen> {
     final response = await _capturePipelineService.submitToCloud(payload);
 
     if (response['status'] == 'accepted') {
+      if (!mounted) return;
       setState(() => _guidanceText = 'Authentication successful. Template ready.');
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => const AuthSuccessScreen(),
+        ),
+      );
     } else {
       setState(() => _guidanceText = 'Cloud matching failed. Retrying later.');
     }
