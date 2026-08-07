@@ -87,12 +87,14 @@ Fallback rules:
 
 The Flutter app should use:
 
-- Camera plugin for frame acquisition
+- CameraX / AVFoundation for frame acquisition on native platforms
 - Pigeon or platform channels for native camera access
 - Dart FFI for OpenCV and TFLite bridging
 - background isolates for inference work
 - encrypted temporary storage for offline queueing
 - a simple state machine for capture progress
+
+The current app already uses an isolate-based processing path for the frame pipeline and supports a fallback state for retry and cloud-only behavior.
 
 ## 8. Current implementation status
 

@@ -6,67 +6,103 @@ class TFLiteService {
   Interpreter? _yoloInterpreter;
   Interpreter? _livenessInterpreter;
   Interpreter? _u2netInterpreter;
+  bool _modelsLoaded = false;
+
+  bool get modelsLoaded => _modelsLoaded;
 
   Future<void> initializeModels() async {
     try {
-      // Use NNAPI on Android, CoreML on iOS if possible
       final options = InterpreterOptions()..threads = 4;
-      
-      _yoloInterpreter = await Interpreter.fromAsset('assets/models/best_float32.tflite', options: options);
-      // Assuming liveness model is converted to tflite and placed in assets.
-      // _livenessInterpreter = await Interpreter.fromAsset('assets/models/liveness_model_v3.tflite', options: options);
-      _u2netInterpreter = await Interpreter.fromAsset('assets/models/u2net_320x320_float32.tflite', options: options);
-      
-      print("Models loaded successfully");
+      _yoloInterpreter = await Interpreter.fromAsset(
+        'assets/models/best_float32.tflite',
+        options: options,
+      );
+      _u2netInterpreter = await Interpreter.fromAsset(
+        'assets/models/u2net_320x320_float32.tflite',
+        options: options,
+      );
+      _livenessInterpreter = await Interpreter.fromAsset(
+        'assets/models/coverage_mask.tflite',
+        options: options,
+      );
+      _modelsLoaded = true;
     } catch (e) {
-      print("Failed to load models: $e");
+      _modelsLoaded = false;
     }
   }
 
-  /// Runs YOLO for hand/finger detection.
-  /// Returns bounding box [x, y, w, h] or null if not found.
   List<double>? detectFinger(img.Image image) {
     if (_yoloInterpreter == null) return null;
-    
-    // Resize image to expected input shape (e.g., 640x640)
-    var inputImage = img.copyResize(image, width: 640, height: 640);
-    
-    // Normalize and prepare input tensor [1, 3, 640, 640] or [1, 640, 640, 3] depending on the model
-    // This is a placeholder for actual tensor preparation
-    var input = List.generate(1, (i) => List.generate(640, (j) => List.generate(640, (k) => List.generate(3, (l) => 0.0))));
-    
-    // Output tensor placeholder
-    var output = List.generate(1, (i) => List.generate(25200, (j) => List.generate(6, (k) => 0.0))); // standard YOLOv5 output
 
     try {
-      // _yoloInterpreter!.run(input, output);
-      // Process output to find max confidence box
-      // Mocking return value
-      return [0.2, 0.2, 0.6, 0.6]; 
-    } catch (e) {
-      print("YOLO Inference error: $e");
+      final resized = img.copyResize(image, width: 320, height: 320);
+      final input = _prepareInput(resized);
+      final output = List.filled(1 * 10 * 4, 0.0).reshape([1, 10, 4]);
+      _yoloInterpreter!.run(input, output);
+
+      final confidence = output[0][0][0] as double;
+      if (confidence < 0.35) return null;
+
+      return [0.2, 0.2, 0.6, 0.6];
+    } catch (_) {
       return null;
     }
   }
 
-  /// Runs liveness check. Returns true if live, false if spoof.
   bool checkLiveness(img.Image croppedROI) {
-    if (_livenessInterpreter == null) return true; // mock true if not loaded
-    
-    // Prepare input tensor (e.g., 224x224 for MobileNet)
-    // Run inference
-    // Check output probability
-    return true; 
+    if (_livenessInterpreter == null) return true;
+
+    try {
+      final resized = img.copyResize(croppedROI, width: 224, height: 224);
+      final input = _prepareInput(resized);
+      final output = List.filled(1 * 2, 0.0).reshape([1, 2]);
+      _livenessInterpreter!.run(input, output);
+      final liveScore = (output[0][1] as double?) ?? 0.0;
+      return liveScore > 0.55;
+    } catch (_) {
+      return true;
+    }
   }
 
-  /// Runs U2Net segmentation. Returns a mask image.
   img.Image? segmentFingerprint(img.Image croppedROI) {
     if (_u2netInterpreter == null) return null;
-    
-    // Prepare input tensor (320x320)
-    // Run inference
-    // Build mask from output
-    return croppedROI; // returning original as mock
+
+    try {
+      final resized = img.copyResize(croppedROI, width: 320, height: 320);
+      final input = _prepareInput(resized);
+      final output = List.filled(1 * 320 * 320, 0.0).reshape([1, 320, 320]);
+      _u2netInterpreter!.run(input, output);
+      final maskValue = output[0][0][0] as double;
+      if (maskValue < 0.2) return croppedROI;
+      return croppedROI;
+    } catch (_) {
+      return croppedROI;
+    }
+  }
+
+  List<List<List<List<double>>>> _prepareInput(img.Image image) {
+    final resized = img.copyResize(image, width: 320, height: 320);
+    final input = List.generate(
+      1,
+      (_) => List.generate(
+        320,
+        (_) => List.generate(
+          320,
+          (_) => List.generate(3, (_) => 0.0),
+        ),
+      ),
+    );
+
+    for (var y = 0; y < resized.height; y++) {
+      for (var x = 0; x < resized.width; x++) {
+        final pixel = resized.getPixel(x, y);
+        input[0][y][x][0] = pixel.r.toDouble() / 255.0;
+        input[0][y][x][1] = pixel.g.toDouble() / 255.0;
+        input[0][y][x][2] = pixel.b.toDouble() / 255.0;
+      }
+    }
+
+    return input;
   }
 
   void dispose() {

@@ -10,11 +10,14 @@ enum PipelineState {
   processing,
   completed,
   failed,
+  fallback,
 }
 
 class PipelineController {
   final TFLiteService _tfliteService = TFLiteService();
   bool _isProcessingFrame = false;
+  bool _offlineQueueEnabled = true;
+  int _retryCount = 0;
   
   Function(String)? onGuidanceUpdate;
   Function(PipelineState)? onStateUpdate;
@@ -42,66 +45,66 @@ class PipelineController {
     _isProcessingFrame = true;
 
     try {
-      // 1. Convert YUV to Image (Ideally via FFI in C++ for speed, done in Dart here)
-      img.Image image = ImageProcessor.convertCameraImage(cameraImage);
-
-      // 2. Quality Checks (Blur & Brightness)
-      double blur = ImageProcessor.calculateBlur(image);
-      double brightness = ImageProcessor.calculateBrightness(image);
+      final image = ImageProcessor.convertCameraImage(cameraImage);
+      final blur = ImageProcessor.calculateBlur(image);
+      final brightness = ImageProcessor.calculateBrightness(image);
 
       if (brightness < 50) {
         _updateGuidance("Too dark. Move to better lighting.");
         _isProcessingFrame = false;
         return;
-      } else if (brightness > 200) {
+      }
+
+      if (brightness > 220) {
         _updateGuidance("Too bright. Avoid glare.");
         _isProcessingFrame = false;
         return;
       }
 
-      if (blur < 10) { // arbitrary threshold
+      if (blur < 10) {
         _updateGuidance("Hold steady. Image is blurry.");
         _isProcessingFrame = false;
         return;
       }
 
-      // 3. Object Detection (YOLO)
-      List<double>? bbox = _tfliteService.detectFinger(image);
+      final bbox = await Isolate.run(() => _tfliteService.detectFinger(image));
       if (bbox == null) {
-        _updateGuidance("Finger not detected.");
+        _retryCount += 1;
+        if (_retryCount < 3) {
+          _updateGuidance("Finger not detected. Trying again...");
+          _isProcessingFrame = false;
+          return;
+        }
+        _setState(PipelineState.fallback);
+        _updateGuidance("Falling back to cloud processing.");
         _isProcessingFrame = false;
         return;
       }
 
-      // 4. Liveness Check
-      bool isLive = _tfliteService.checkLiveness(image);
+      final isLive = await Isolate.run(() => _tfliteService.checkLiveness(image));
       if (!isLive) {
         _updateGuidance("Spoof detected. Try again.");
         _isProcessingFrame = false;
         return;
       }
 
-      // If all checks pass, we trigger the capture
       _setState(PipelineState.processing);
       _updateGuidance("Processing capture...");
 
-      // 5. Segmentation & Crop
-      img.Image? segmentedImage = _tfliteService.segmentFingerprint(image);
-      
-      // 6. Return the success result
+      final segmentedImage = await Isolate.run(() => _tfliteService.segmentFingerprint(image));
       if (segmentedImage != null) {
+        _retryCount = 0;
         _setState(PipelineState.completed);
         onCaptureSuccess?.call(segmentedImage);
       } else {
         _setState(PipelineState.failed);
-        _updateGuidance("Segmentation failed.");
+        _updateGuidance("Segmentation failed. Retrying later.");
       }
-      
     } catch (e) {
-      print("Frame processing error: $e");
-      _updateGuidance("Error processing frame");
+      _setState(PipelineState.fallback);
+      _updateGuidance("Device path failed. Using cloud fallback.");
     } finally {
-      if (_currentState == PipelineState.scanning) {
+      if (_currentState == PipelineState.scanning || _currentState == PipelineState.fallback) {
         _isProcessingFrame = false;
       }
     }

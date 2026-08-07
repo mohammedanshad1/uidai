@@ -14,6 +14,17 @@ The app currently provides:
 
 ## Architecture summary
 
+```text
+Camera stream
+  -> CameraX / AVFoundation
+  -> OpenCV quality checks
+  -> TFLite detection + liveness
+  -> segmentation + ROI compression
+  -> encrypted payload
+  -> cloud template generation + matching
+  -> authentication result
+```
+
 ### On-device processing
 The device handles:
 
@@ -30,6 +41,22 @@ The cloud handles:
 - biometric template generation,
 - matching against enrolled records,
 - secure policy and authorization checks.
+
+### Runtime and integration notes
+
+- CameraX and AVFoundation provide native camera access.
+- OpenCV is used for blur, brightness, and quality checks.
+- Platform Channels and Pigeon are planned for native bridge communication.
+- Dart FFI connects Flutter to native OpenCV and TFLite code.
+- Isolates are used to keep frame processing off the UI thread.
+
+## Fallback and resilience flow
+
+If the on-device path is unavailable or weak, the app will:
+
+1. retry the detection step a small number of times,
+2. fall back to a cloud-only processing path when needed,
+3. queue encrypted requests for offline retry when connectivity is poor.
 
 ## Folder structure
 
