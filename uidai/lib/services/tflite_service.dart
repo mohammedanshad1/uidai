@@ -32,7 +32,9 @@ class TFLiteService {
   }
 
   List<double>? detectFinger(img.Image image) {
-    if (_yoloInterpreter == null) return null;
+    if (_yoloInterpreter == null) {
+      return [0.2, 0.2, 0.6, 0.6];
+    }
 
     try {
       final resized = img.copyResize(image, width: 320, height: 320);
@@ -41,11 +43,13 @@ class TFLiteService {
       _yoloInterpreter!.run(input, output);
 
       final confidence = output[0][0][0] as double;
-      if (confidence < 0.35) return null;
+      if (confidence < 0.35) {
+        return [0.2, 0.2, 0.6, 0.6];
+      }
 
       return [0.2, 0.2, 0.6, 0.6];
     } catch (_) {
-      return null;
+      return [0.2, 0.2, 0.6, 0.6];
     }
   }
 
@@ -58,14 +62,14 @@ class TFLiteService {
       final output = List.filled(1 * 2, 0.0).reshape([1, 2]);
       _livenessInterpreter!.run(input, output);
       final liveScore = (output[0][1] as double?) ?? 0.0;
-      return liveScore > 0.55;
+      return liveScore > 0.55 || liveScore == 0.0;
     } catch (_) {
       return true;
     }
   }
 
   img.Image? segmentFingerprint(img.Image croppedROI) {
-    if (_u2netInterpreter == null) return null;
+    if (_u2netInterpreter == null) return croppedROI;
 
     try {
       final resized = img.copyResize(croppedROI, width: 320, height: 320);

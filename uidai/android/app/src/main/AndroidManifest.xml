@@ -5,7 +5,7 @@
     <uses-feature android:name="android.hardware.camera.autofocus"/>
     
     <application
-        android:label="uidai"
+        android:label="UIDAI"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
